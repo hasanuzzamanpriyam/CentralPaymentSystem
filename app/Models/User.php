@@ -50,8 +50,8 @@ class User extends Authenticatable
         return $this->hasMany(Transaction::class);
     }
 
-    public function merchantCredential()
+    public function projects()
     {
-        return $this->hasOne(MerchantCredential::class);
+        return $this->hasMany(Project::class);
     }
 }

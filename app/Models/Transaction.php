@@ -14,6 +14,7 @@ class Transaction extends Model
      */
     protected $fillable = [
         'user_id',
+        'project_id',
         'type',
         'amount',
         'gateway',
@@ -38,5 +39,13 @@ class Transaction extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the project that this transaction belongs to (if any).
+     */
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 }

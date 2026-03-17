@@ -4,7 +4,7 @@ import { useState } from 'react';
 import axios from 'axios';
 
 export default function DemoStore() {
-    const { isMerchant } = usePage().props;
+    const { isMerchant, projectId } = usePage().props;
     
     const [amount, setAmount] = useState('150.00');
     const [gateway, setGateway] = useState('stripe');
@@ -37,6 +37,7 @@ export default function DemoStore() {
                 amount: amount,
                 currency: 'BDT',
                 gateway: gateway,
+                project_id: projectId,
                 metadata: {
                     order_id: 'ORDER-' + Math.floor(Math.random() * 10000),
                     product: 'Premium Tech Gadget'
@@ -127,16 +128,21 @@ export default function DemoStore() {
 
                         <button
                             type="submit"
-                            disabled={loading || !isMerchant}
+                            disabled={loading || !isMerchant || !projectId}
                             className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 transition-colors"
                         >
-                            {loading ? 'Processing...' : (!isMerchant ? 'Merchants Only' : 'Pay Now')}
+                            {loading ? 'Processing...' : (!isMerchant ? 'Merchants Only' : (!projectId ? 'Create a Project First' : 'Pay Now'))}
                         </button>
                     </form>
 
                     {!isMerchant && (
                         <p className="mt-4 text-xs text-center text-amber-600 dark:text-amber-500 font-medium">
                             Warning: You are logged into a Personal account. The orchestrator API will fail because you cannot create a merchant payment intent.
+                        </p>
+                    )}
+                    {isMerchant && !projectId && (
+                        <p className="mt-4 text-xs text-center text-amber-600 dark:text-amber-500 font-medium">
+                            Warning: You must create at least one Project in your Merchant Dashboard before testing the sandbox.
                         </p>
                     )}
                 </div>

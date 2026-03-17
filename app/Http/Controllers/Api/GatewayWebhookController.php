@@ -89,11 +89,11 @@ class GatewayWebhookController extends Controller
             Log::info("Payment $transactionId successfully processed via Stripe webhook. Wallet balance updated.");
 
             // 5. Notify the Merchant if applicable
-            if ($transaction->type === 'merchant_payment') {
-                $merchantCredential = $transaction->user->merchantCredential;
-                if ($merchantCredential && $merchantCredential->webhook_url) {
-                    // Dispatch the job created in Phase 4
-                    DispatchMerchantWebhookJob::dispatch($transaction, $merchantCredential);
+            if ($transaction->type === 'merchant_payment' && $transaction->project) {
+                $project = $transaction->project;
+                if ($project->webhook_url) {
+                    // Dispatch the job with the project instead of old merchantCredentials
+                    DispatchMerchantWebhookJob::dispatch($transaction, $project);
                 }
             }
 

@@ -14,15 +14,16 @@ class PaymentManager
      * Resolve the payment gateway driver based on the gateway name.
      *
      * @param string $gatewayName
+     * @param array|null $credentials
      * @return PaymentGatewayInterface
      * @throws InvalidArgumentException
      */
-    public function resolve(string $gatewayName): PaymentGatewayInterface
+    public function resolve(string $gatewayName, ?array $credentials = null): PaymentGatewayInterface
     {
         return match (strtolower($gatewayName)) {
-            'stripe' => new StripeDriver(),
-            'bkash' => new BkashDriver(),
-            'sslcommerz' => new SslCommerzDriver(),
+            'stripe' => new StripeDriver($credentials),
+            'bkash' => new BkashDriver($credentials),
+            'sslcommerz' => new SslCommerzDriver($credentials),
             default => throw new InvalidArgumentException("Unsupported payment gateway: {$gatewayName}"),
         };
     }

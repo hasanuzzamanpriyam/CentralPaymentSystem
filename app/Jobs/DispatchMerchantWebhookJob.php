@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Models\MerchantCredential;
+use App\Models\Project;
 use App\Models\Transaction;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,7 +17,7 @@ class DispatchMerchantWebhookJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $transaction;
-    public $merchantCredential;
+    public $project;
 
     /**
      * The number of times the job may be attempted.
@@ -39,10 +39,10 @@ class DispatchMerchantWebhookJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(Transaction $transaction, MerchantCredential $merchantCredential)
+    public function __construct(Transaction $transaction, Project $project)
     {
         $this->transaction = $transaction;
-        $this->merchantCredential = $merchantCredential;
+        $this->project = $project;
     }
 
     /**
@@ -50,8 +50,8 @@ class DispatchMerchantWebhookJob implements ShouldQueue
      */
     public function handle(): void
     {
-        if (empty($this->merchantCredential->webhook_url)) {
-            Log::warning('Webhook URL not configured for merchant user ID: ' . $this->merchantCredential->user_id);
+        if (empty($this->project->webhook_url)) {
+            Log::warning('Webhook URL not configured for project ID: ' . $this->project->id);
             return;
         }
 
@@ -69,7 +69,7 @@ class DispatchMerchantWebhookJob implements ShouldQueue
         $jsonPayload = json_encode($payload);
 
         // Compute HMAC SHA-256 signature
-        $signature = hash_hmac('sha256', $jsonPayload, $this->merchantCredential->webhook_secret);
+        $signature = hash_hmac('sha256', $jsonPayload, $this->project->webhook_secret);
 
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
@@ -78,7 +78,7 @@ class DispatchMerchantWebhookJob implements ShouldQueue
             'User-Agent' => 'CentralPaymentSystem-WebhookDispatcher/1.0',
         ])
         ->timeout(10)
-        ->post($this->merchantCredential->webhook_url, $payload);
+        ->post($this->project->webhook_url, $payload);
 
         // If the merchant server does not respond with a 2xx status, fail the job and trigger a retry
         if ($response->failed()) {

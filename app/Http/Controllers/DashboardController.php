@@ -25,8 +25,6 @@ class DashboardController extends Controller
     public function merchant(Request $request)
     {
         $user = $request->user();
-        
-        $merchantCredential = $user->merchantCredential()->firstOrCreate(['user_id' => $user->id]);
 
         $totalVolume = $user->transactions()
             ->where('status', 'completed')
@@ -34,14 +32,16 @@ class DashboardController extends Controller
 
         $totalTransactions = $user->transactions()->count();
 
-        // Check if session has flash data for raw credentials (from just regenerating)
+        // Load all the merchant's projects and their configured gateways
+        $projects = $user->projects()->with('gateways')->latest()->get();
+
+        // Check if session has flash data for raw credentials
         $rawCredentials = session('raw_credentials');
 
         return Inertia::render('Dashboard/Merchant', [
             'totalVolume' => $totalVolume,
             'totalTransactions' => $totalTransactions,
-            'webhookUrl' => $merchantCredential->webhook_url,
-            'hasApiKey' => !empty($merchantCredential->api_key),
+            'projects' => $projects,
             'rawCredentials' => $rawCredentials,
         ]);
     }

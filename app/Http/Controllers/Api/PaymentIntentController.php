@@ -19,6 +19,7 @@ class PaymentIntentController extends Controller
             'amount' => ['required', 'numeric', 'min:0.01'],
             'currency' => ['nullable', 'string', 'size:3'],
             'gateway' => ['required', 'string', 'in:stripe,bkash,sslcommerz'],
+            'project_id' => ['required', 'exists:projects,id'],
             'metadata' => ['nullable', 'array'],
         ]);
 
@@ -30,9 +31,20 @@ class PaymentIntentController extends Controller
             // Lock the user's wallet for pessimistic locking
             $wallet = $user->wallet()->lockForUpdate()->firstOrFail();
 
+            // Find the project and ensure it belongs to the user
+            $project = $user->projects()->findOrFail($validated['project_id']);
+
+            // Find the configured gateway for this project
+            $gatewayConfig = $project->gateways()->where('gateway_name', $validated['gateway'])->where('is_active', true)->first();
+            
+            if (!$gatewayConfig) {
+                throw new \Exception("Gateway '{$validated['gateway']}' is not configured or is inactive for this project.");
+            }
+
             // 2. Create Pending Transaction Record
             $transaction = Transaction::create([
                 'user_id' => $user->id,
+                'project_id' => $project->id,
                 'type' => 'merchant_payment',
                 'amount' => $validated['amount'],
                 'gateway' => $validated['gateway'],
@@ -40,8 +52,8 @@ class PaymentIntentController extends Controller
                 'metadata' => $validated['metadata'] ?? null,
             ]);
 
-            // 3. Resolve the Gateway Driver
-            $driver = $paymentManager->resolve($validated['gateway']);
+            // 3. Resolve the Gateway Driver with the decrypted dynamic credentials
+            $driver = $paymentManager->resolve($validated['gateway'], $gatewayConfig->credentials);
 
             // 4. Initialize Payment via Strategy
             $response = $driver->initializePayment($transaction);

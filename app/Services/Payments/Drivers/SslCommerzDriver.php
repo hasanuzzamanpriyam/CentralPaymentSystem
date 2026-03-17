@@ -7,6 +7,13 @@ use App\Services\Payments\Contracts\PaymentGatewayInterface;
 
 class SslCommerzDriver implements PaymentGatewayInterface
 {
+    protected ?array $credentials;
+
+    public function __construct(?array $credentials = null)
+    {
+        $this->credentials = $credentials;
+    }
+
     public function initializePayment(Transaction $transaction): array
     {
         // Dummy implementation for now

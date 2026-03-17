@@ -13,23 +13,20 @@ class DemoStoreController extends Controller
      */
     public function index(Request $request)
     {
-        // For the demo store, we really just need a UI to trigger the API.
-        // We'll pass the merchant credentials if the logged in user is a merchant,
-        // just to make it easy to test using their own API key.
-        // If they are personal, we'll let them know they need a merchant's API key.
-        
         $user = $request->user();
-        $apiKey = null;
+        $projectId = null;
         
         if ($user->account_type === 'merchant') {
-            // Note: in a real app, the store would NEVER expose the secret API key to the frontend.
-            // But this is just a local sandbox to simulate the MERN backend calling the Orchestrator API.
-            // We just need ANY valid token to make the API call. Since Sanctum protects the endpoint,
-            // we'll actually rely on the session auth to hit the API, or we can use the merchant's key if testing externally.
+            // Get the first project for demo purposes
+            $project = $user->projects()->first();
+            if ($project) {
+                $projectId = $project->id;
+            }
         }
 
         return Inertia::render('Demo/Store', [
             'isMerchant' => $user->account_type === 'merchant',
+            'projectId' => $projectId,
         ]);
     }
 

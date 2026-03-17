@@ -19,8 +19,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware([\App\Http\Middleware\CheckAccountType::class . ':merchant'])->group(function () {
         Route::get('dashboard/merchant', [\App\Http\Controllers\DashboardController::class, 'merchant'])->name('dashboard.merchant');
-        Route::post('dashboard/merchant/webhook', [\App\Http\Controllers\MerchantSettingsController::class, 'updateWebhook'])->name('merchant.webhook.update');
-        Route::post('dashboard/merchant/api-key', [\App\Http\Controllers\MerchantSettingsController::class, 'regenerateApiKey'])->name('merchant.apikey.regenerate');
+        
+        // Project routes
+        Route::post('projects', [\App\Http\Controllers\ProjectController::class, 'store'])->name('projects.store');
+        Route::post('projects/{project}/webhook', [\App\Http\Controllers\ProjectController::class, 'updateWebhook'])->name('projects.webhook.update');
+        Route::post('projects/{project}/api-key', [\App\Http\Controllers\ProjectController::class, 'regenerateApiKey'])->name('projects.apikey.regenerate');
+        Route::post('projects/{project}/gateway', [\App\Http\Controllers\ProjectController::class, 'configureGateway'])->name('projects.gateway.configure');
     });
 
     // Demo Store & Mock Gateway
