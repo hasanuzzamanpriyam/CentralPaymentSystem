@@ -38,4 +38,30 @@ class SslCommerzDriver implements PaymentGatewayInterface
             'status' => 'refunded',
         ];
     }
+
+    public function getRequiredCredentials(): array
+    {
+        return [
+            ['name' => 'store_id', 'label' => 'Store ID', 'type' => 'text', 'required' => true],
+            ['name' => 'store_password', 'label' => 'Store Password', 'type' => 'password', 'required' => true],
+        ];
+    }
+
+    public function supportsRefunds(): bool
+    {
+        return true; 
+    }
+
+    public function getStandardizedResponse(mixed $gatewayResponse): array
+    {
+        return [
+            'success' => $gatewayResponse['success'] ?? false,
+            'transaction_id' => $gatewayResponse['val_id'] ?? null,
+            'amount' => $gatewayResponse['amount'] ?? 0.0,
+            'currency' => $gatewayResponse['currency_type'] ?? 'BDT',
+            'status' => $gatewayResponse['status'] ?? 'pending',
+            'error_message' => $gatewayResponse['error'] ?? null,
+            'raw_response' => $gatewayResponse,
+        ];
+    }
 }

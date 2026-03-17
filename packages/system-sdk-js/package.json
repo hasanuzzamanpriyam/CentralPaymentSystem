@@ -1,0 +1,27 @@
+{
+  "name": "@central-payment/system-sdk",
+  "version": "1.0.0",
+  "description": "Official JavaScript/TypeScript SDK for the Central Payment System",
+  "main": "dist/client.js",
+  "types": "dist/types/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "keywords": [
+    "payment",
+    "gateway",
+    "stripe",
+    "bkash",
+    "sslcommerz"
+  ],
+  "author": "Central Payment System",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

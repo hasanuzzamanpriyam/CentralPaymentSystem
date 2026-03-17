@@ -39,4 +39,29 @@ class StripeDriver implements PaymentGatewayInterface
             'status' => 'refunded',
         ];
     }
+
+    public function getRequiredCredentials(): array
+    {
+        return [
+            ['name' => 'secret_key', 'label' => 'Stripe Secret Key', 'type' => 'password', 'required' => true],
+        ];
+    }
+
+    public function supportsRefunds(): bool
+    {
+        return true;
+    }
+
+    public function getStandardizedResponse(mixed $gatewayResponse): array
+    {
+        return [
+            'success' => $gatewayResponse['success'] ?? false,
+            'transaction_id' => $gatewayResponse['id'] ?? null,
+            'amount' => $gatewayResponse['amount'] ?? 0.0,
+            'currency' => $gatewayResponse['currency'] ?? 'usd',
+            'status' => $gatewayResponse['status'] ?? 'pending',
+            'error_message' => $gatewayResponse['error'] ?? null,
+            'raw_response' => $gatewayResponse,
+        ];
+    }
 }

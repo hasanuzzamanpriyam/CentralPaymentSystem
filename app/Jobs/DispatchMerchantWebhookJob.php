@@ -18,6 +18,7 @@ class DispatchMerchantWebhookJob implements ShouldQueue
 
     public $transaction;
     public $project;
+    public $standardizedPayload;
 
     /**
      * The number of times the job may be attempted.
@@ -39,10 +40,11 @@ class DispatchMerchantWebhookJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(Transaction $transaction, Project $project)
+    public function __construct(Transaction $transaction, Project $project, array $standardizedPayload = null)
     {
         $this->transaction = $transaction;
         $this->project = $project;
+        $this->standardizedPayload = $standardizedPayload;
     }
 
     /**
@@ -55,7 +57,8 @@ class DispatchMerchantWebhookJob implements ShouldQueue
             return;
         }
 
-        $payload = [
+        // Fallback to basic representation if no standard payload is passed
+        $basePayload = [
             'transaction_id' => $this->transaction->id,
             'gateway_transaction_id' => $this->transaction->gateway_transaction_id,
             'amount' => $this->transaction->amount,
@@ -66,6 +69,7 @@ class DispatchMerchantWebhookJob implements ShouldQueue
             'timestamp' => now()->toIso8601String(),
         ];
 
+        $payload = array_merge($basePayload, $this->standardizedPayload ?? []);
         $jsonPayload = json_encode($payload);
 
         // Compute HMAC SHA-256 signature

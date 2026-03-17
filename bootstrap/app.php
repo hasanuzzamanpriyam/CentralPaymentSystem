@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'idempotency' => \App\Http\Middleware\IdempotencyMiddleware::class,
+            'auth.project' => \App\Http\Middleware\AuthenticateProjectKey::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -12,88 +12,69 @@ use Illuminate\Support\Facades\Log;
 class GatewayWebhookController extends Controller
 {
     /**
-     * Handle incoming webhooks from Stripe.
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * Handle incoming webhooks from any supported external gateway.
      */
-    public function handleStripeWebhook(Request $request)
+    public function handleWebhook(Request $request, string $gateway, \App\Services\Webhooks\WebhookNormalizer $normalizer)
     {
-        $payload = $request->getContent();
-        $sigHeader = $request->header('Stripe-Signature');
-        $endpointSecret = config('services.stripe.webhook_secret'); // Assume it's configured
+        $payloadRaw = $request->getContent();
+        $payloadArray = json_decode($payloadRaw, true) ?: $request->all();
 
-        // 1. Verify Stripe Signature (Mocked for this test)
-        // In reality, you would use: \Stripe\Webhook::constructEvent($payload, $sigHeader, $endpointSecret);
-        if (!$this->verifyMockSignature($payload, $sigHeader)) {
-            Log::warning('Invalid Stripe webhook signature.');
-            return response()->json(['error' => 'Invalid signature'], 400);
+        try {
+            // Normalize payload to find transaction reference
+            $normalized = $normalizer->normalize($payloadArray, $gateway);
+        } catch (\Exception $e) {
+            Log::error("Webhook Normalization Failed: " . $e->getMessage());
+            return response()->json(['error' => 'Unsupported gateway'], 400);
         }
 
-        $event = json_decode($payload, true);
-
-        // 2. We only care about successful payment events.
-        if ($event['type'] !== 'checkout.session.completed' && $event['type'] !== 'payment_intent.succeeded') {
-            return response()->json(['status' => 'ignored'], 200);
-        }
-
-        // Extract internal reference (we assume client_reference_id or metadata.transaction_id handles this)
-        $transactionId = $event['data']['object']['client_reference_id'] 
-                         ?? ($event['data']['object']['metadata']['transaction_id'] ?? null);
-        
-        $gatewayTxId = $event['data']['object']['id'] ?? 'unknown_stripe_tx_' . time();
+        $transactionId = $normalized['transaction_id'];
 
         if (!$transactionId) {
-            Log::error('Stripe Webhook: Could not find transaction ID in payload.', $event);
+            Log::error("Webhook: Could not find transaction ID in payload for $gateway.");
             return response()->json(['error' => 'Transaction ID missing'], 400);
         }
 
         try {
-            // 3. Begin ACID Transaction with Pessimistic Locking
             DB::beginTransaction();
-
-            // Lock the transaction row
             $transaction = Transaction::where('id', '=', $transactionId)->lockForUpdate()->first();
 
             if (!$transaction) {
                 DB::rollBack();
-                Log::error("Stripe Webhook: Transaction $transactionId not found.");
                 return response()->json(['error' => 'Transaction not found'], 404);
             }
 
-            // Prevent double-processing
             if ($transaction->status === 'completed') {
                 DB::rollBack();
                 return response()->json(['status' => 'already_processed'], 200);
             }
 
-            // Lock the user's wallet
+            // Note: Signature verification should theoretically occur here using the 
+            // project's specific gateway configs ($transaction->project->gateways).
+            // For the sandbox MVP, we accept the mock payload if it parses cleanly.
+
             $wallet = $transaction->user->wallet()->lockForUpdate()->first();
 
             if (!$wallet) {
                 DB::rollBack();
-                Log::error("Stripe Webhook: Wallet not found for user {$transaction->user_id}.");
                 return response()->json(['error' => 'Wallet not found'], 404);
             }
 
-            // 4. Update the Balance and Transaction Status
-            $wallet->balance += $transaction->amount;
-            $wallet->save();
+            if ($normalized['status'] === 'completed') {
+                $wallet->balance += $normalized['amount'] > 0 ? $normalized['amount'] : $transaction->amount;
+                $wallet->save();
+            }
 
-            $transaction->status = 'completed';
-            $transaction->gateway_transaction_id = $gatewayTxId;
+            $transaction->status = $normalized['status'];
+            $transaction->gateway_transaction_id = $normalized['raw_payload']['id'] ?? ($normalized['raw_payload']['trxID'] ?? time());
             $transaction->save();
-
             DB::commit();
-            
-            Log::info("Payment $transactionId successfully processed via Stripe webhook. Wallet balance updated.");
 
-            // 5. Notify the Merchant if applicable
+            // Notify Merchant
             if ($transaction->type === 'merchant_payment' && $transaction->project) {
                 $project = $transaction->project;
                 if ($project->webhook_url) {
-                    // Dispatch the job with the project instead of old merchantCredentials
-                    DispatchMerchantWebhookJob::dispatch($transaction, $project);
+                    // Pass the normalized payload to the outbound job
+                    DispatchMerchantWebhookJob::dispatch($transaction, $project, $normalized);
                 }
             }
 
@@ -101,19 +82,8 @@ class GatewayWebhookController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Stripe Webhook Processing Error: " . $e->getMessage());
+            Log::error("Webhook Processing Error: " . $e->getMessage());
             return response()->json(['error' => 'Internal Server Error'], 500);
         }
-    }
-
-    /**
-     * Helper to mock signature verification since we don't have the real Stripe SDK installed tightly here.
-     * In production, use Stripe's official SDK.
-     */
-    private function verifyMockSignature($payload, $sigHeader)
-    {
-        // For testing purposes, we assume any request to this local endpoint is valid unless explicitly tested.
-        // Or if $sigHeader is missing, we could fail it, but let's allow it to pass for development setup.
-        return true; 
     }
 }
