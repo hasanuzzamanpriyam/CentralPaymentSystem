@@ -11,7 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'account_type'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -23,6 +23,14 @@ class User extends Authenticatable
      *
      * @return array<string, string>
      */
+
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'account_type',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -30,5 +38,20 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    public function wallet()
+    {
+        return $this->hasOne(Wallet::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    public function merchantCredential()
+    {
+        return $this->hasOne(MerchantCredential::class);
     }
 }

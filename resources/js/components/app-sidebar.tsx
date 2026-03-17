@@ -22,6 +22,11 @@ const mainNavItems: NavItem[] = [
         href: dashboard(),
         icon: LayoutGrid,
     },
+    {
+        title: 'Demo Sandbox Store',
+        href: '/demo/store',
+        icon: LayoutGrid, // Using LayoutGrid since ShoppingCart might not be imported from lucide-react yet
+    },
 ];
 
 const footerNavItems: NavItem[] = [
